@@ -1,0 +1,58 @@
+version: "3"
+
+services:
+    mysql:
+        image: mysql:5.7
+        ports:
+            - 3306:3306
+        volumes:
+            - ./mysql:/var/lib/mysql
+        environment:
+            MYSQL_DATABASE: task_tracker
+            MYSQL_ROOT_PASSWORD: root
+        networks:
+            - pub-network
+    tracker-api:
+        build:
+            context: ./../tracker-api
+            args:
+                - APP_WORKDIR=/var/www/tracker-api
+                - USER_ID
+                - GROUP_ID
+        volumes:
+            - ./../tracker-api:/var/www/tracker-api
+        environment:
+            XDEBUG_CONFIG: "remote_host=192.168.200.1 remote_enable=1 remote_autostart=off  remote_port=9010"
+            PHP_IDE_CONFIG: "serverName=tracker-api"
+        depends_on:
+            - mysql
+        networks:
+            - pub-network
+#    spa:
+#        build:
+#            context: ./../tracker-spa
+#        volumes:
+#            - ./../tracker-spa:/var/www/tracker-spa
+#        depends_on:
+#            - tracker-api
+#        networks:
+#            - pub-network
+    nginx:
+        image: nginx
+        volumes:
+            - ./nginx/hosts:/etc/nginx/conf.d
+        ports:
+            - "8001:81"
+        depends_on:
+            - tracker-api
+        networks:
+            pub-network:
+                aliases:
+                    - api.tracker.loc
+networks:
+    pub-network:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+                - subnet: 192.168.200.0/28
